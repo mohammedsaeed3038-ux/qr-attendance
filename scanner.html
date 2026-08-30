@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Engine Attendance System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg-primary: #0a0e14;
+    --bg-secondary: #10161d;
+    --bg-card: #151c24;
+    --accent: #2ec866;
+    --accent-bright: #3ee97e;
+    --accent-dim: rgba(46, 200, 102, 0.12);
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-dim: #5a6572;
+    --border: #232b34;
+    --border-bright: #2ec86644;
+    --danger: #f85149;
+    --danger-dim: rgba(248, 81, 73, 0.12);
+    --warning: #d29922;
+    --warning-dim: rgba(210, 153, 34, 0.12);
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-primary);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(46,200,102,0.06) 0%, transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(46,200,102,0.04) 0%, transparent 40%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-bottom: 78px; /* room for bottom nav */
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  header .prompt { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; }
+  header h1 { font-size: 15px; font-weight: 700; margin: 0; letter-spacing: 0.2px; }
+  header .cursor { display: inline-block; width: 7px; height: 14px; background: var(--accent); margin-left: 2px; animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  #topBar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-size: 13px; color: var(--text-secondary);
+  }
+  #topBar b { color: var(--accent); }
+
+  main { max-width: 480px; margin: 0 auto; padding: 20px 16px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+  .card-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim);
+    margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px;
+  }
+  .card-title::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+  label { font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+  select, input[type=text], input[type=password], input[type=tel], input[type=email], input[type=date] {
+    width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-primary); font-size: 15px; font-family: 'JetBrains Mono', monospace;
+  }
+  input[type=date] { color-scheme: dark; }
+  select {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; background-size: 18px;
+  }
+  select:focus, input:focus { outline: none; border-color: var(--accent); }
+  .field { margin-bottom: 12px; }
+
+  button {
+    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 14px;
+    border: none; border-radius: 8px; padding: 12px 18px; cursor: pointer; transition: all 0.15s ease;
+  }
+  .btn-primary { background: var(--accent); color: #05130a; width: 100%; }
+  .btn-primary:hover { background: var(--accent-bright); }
+  .btn-primary:disabled { background: #2a3138; color: var(--text-dim); cursor: not-allowed; }
+  .btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+  .btn-danger-outline { background: transparent; color: var(--danger); border: 1px solid var(--danger-dim); font-size: 12px; padding: 6px 12px; }
+  .btn-danger-outline:hover { background: var(--danger-dim); }
+  .btn-link { background: transparent; color: var(--accent); padding: 4px 8px; font-size: 12px; text-decoration: underline; }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn-row button { flex: 1; }
+  .btn-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+
+  #loginError { color: var(--danger); font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+  /* ---- Bottom nav ---- */
+  #bottomNav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg-secondary); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+    z-index: 50;
+  }
+  .nav-btn {
+    background: transparent; border: none; color: var(--text-dim); font-size: 11px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 10px; flex: 1;
+  }
+  .nav-btn .icon { font-size: 19px; }
+  .nav-btn.active { color: var(--accent); }
+
+  /* ---- Main tab ---- */
+  .greeting { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .greeting .name { color: var(--accent); }
+  .subgreeting { color: var(--text-dim); font-size: 13px; margin-bottom: 18px; }
+  .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .kpi-value { font-size: 26px; font-weight: 700; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .kpi-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  #chartWrap { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding-top: 10px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s ease; }
+  .bar-label { font-size: 9px; color: var(--text-dim); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  .bar-count { font-size: 9px; color: var(--accent); font-family: 'JetBrains Mono', monospace; margin-bottom: 2px; }
+
+  /* ---- Sessions / Students lists ---- */
+  .list-card {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s ease;
+  }
+  .list-card:hover { border-color: var(--border-bright); }
+  .list-card .title { font-weight: 600; font-size: 14px; }
+  .list-card .subtitle { font-size: 12px; color: var(--text-dim); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .list-card .stat { color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 15px; }
+  .chevron { color: var(--text-dim); margin-left: 8px; }
+
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .fab {
+    background: var(--accent); color: #05130a; border: none; width: 36px; height: 36px; border-radius: 50%;
+    font-size: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ---- Detail overlay ---- */
+  #detailOverlay {
+    position: fixed; inset: 0; background: var(--bg-primary); z-index: 100; overflow-y: auto;
+  }
+  #detailOverlay .detail-header {
+    display: flex; align-items: center; gap: 10px; padding: 16px; border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary); position: sticky; top: 0;
+  }
+  #detailOverlay .back-btn { background: transparent; color: var(--text-primary); font-size: 20px; padding: 4px 8px; }
+  #detailOverlay .detail-title { font-weight: 700; font-size: 16px; }
+  #detailContent { padding: 18px 16px; max-width: 480px; margin: 0 auto; }
+
+  .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .k { color: var(--text-dim); }
+  .info-row .v { font-family: 'JetBrains Mono', monospace; color: var(--text-primary); text-align: right; }
+  .info-row .v-link-row { display: flex; align-items: center; gap: 8px; }
+  .info-row a.contact-link { color: var(--accent-bright); text-decoration: none; font-family: 'JetBrains Mono', monospace; }
+  .info-row a.contact-link:hover { text-decoration: underline; }
+  .copy-btn {
+    background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border);
+    padding: 3px 9px; font-size: 11px; border-radius: 6px; font-family: 'Inter', sans-serif; font-weight: 600;
+  }
+  .copy-btn:hover { color: var(--accent-bright); border-color: var(--border-bright); }
+
+  .session-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; margin: 3px; padding: 0; cursor: pointer;
+    appearance: none; -webkit-appearance: none; transition: transform 0.1s ease;
+  }
+  .session-pill:hover { transform: scale(1.08); }
+  .session-pill.present { background: var(--accent-dim); color: var(--accent-bright); border: 1px solid var(--border-bright); }
+  .session-pill.excused { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(210,153,34,0.35); }
+  .session-pill.absent { background: var(--bg-secondary); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .status-choice { flex: 1; }
+  .status-choice.chosen-present { border-color: var(--border-bright); color: var(--accent-bright); }
+  .status-choice.chosen-excused { border-color: rgba(210,153,34,0.4); color: var(--warning); }
+  .status-choice.chosen-absent { border-color: var(--border); color: var(--text-dim); }
+
+  /* ---- Modal (add student) ---- */
+  #modalOverlay, #deleteOverlay, #statusEditOverlay, #excuseConfirmOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  #modalCard {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px 16px 0 0;
+    padding: 20px; width: 100%; max-width: 480px;
+  }
+  #modalCard h3 { margin: 0 0 14px 0; font-size: 16px; }
+
+  /* ---- Scan tab (reused from previous scanner) ---- */
+  #activeBanner {
+    display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+    background: var(--accent-dim); border: 1px solid var(--border-bright); border-radius: var(--radius); margin-bottom: 16px;
+  }
+  #activeBanner .label { font-size: 13px; color: var(--text-secondary); }
+  #activeBanner .session { color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  #counter { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); font-size: 15px; }
+  #reader { border-radius: 8px; overflow: hidden; margin: 14px 0; border: 1px solid var(--border); }
+  .divider { text-align: center; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0; }
+  #fileInput { display: none; }
+  #result {
+    margin-top: 14px; padding: 14px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    min-height: 20px; font-family: 'JetBrains Mono', monospace; border: 1px solid var(--border);
+  }
+  .idle { background: var(--bg-secondary); color: var(--text-secondary); }
+  .success { background: var(--accent-dim); color: var(--accent-bright); border-color: var(--border-bright); }
+  .warning { background: var(--warning-dim); color: var(--warning); border-color: rgba(210,153,34,0.3); }
+  .error { background: var(--danger-dim); color: var(--danger); border-color: rgba(248,81,73,0.3); }
+  #queueNote { font-size: 12px; color: var(--warning); margin-top: 10px; }
+
+  .history-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-main { flex: 1; min-width: 0; }
+  .history-text { font-size: 13px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-meta { font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .badge {
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; text-transform: uppercase;
+    letter-spacing: 0.5px; white-space: nowrap; font-family: 'JetBrains Mono', monospace;
+  }
+  .badge-success { background: var(--accent-dim); color: var(--accent-bright); }
+  .badge-warning { background: var(--warning-dim); color: var(--warning); }
+  .badge-error { background: var(--danger-dim); color: var(--danger); }
+  .badge-excused { background: var(--warning-dim); color: var(--warning); }
+  #emptyHistory, #emptyLog, #emptyStudents { color: var(--text-dim); font-size: 13px; text-align: center; padding: 10px 0; }
+  #logMeta { font-size: 11px; color: var(--text-dim); margin-top: 10px; text-align: center; }
+
+  .hidden { display: none !important; }
+  footer { text-align: center; color: var(--text-dim); font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-top: 20px; }
+  .loading-text { color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="prompt">&gt;_</span>
+  <h1>Project Engine Attendance System<span class="cursor"></span></h1>
+</header>
+
+<div id="topBar" class="hidden">
+  Logged in as <b id="topBarName">—</b>
+  <button id="logoutBtn" class="btn-link">logout</button>
+</div>
+
+<main>
+
+  <!-- Login -->
+  <div class="card" id="loginCard">
+    <p class="card-title">Admin Login</p>
+    <div class="field">
+      <label for="loginUser">Username</label>
+      <input type="text" id="loginUser" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="loginPass">Password</label>
+      <input type="password" id="loginPass" autocomplete="current-password">
+    </div>
+    <button id="loginBtn" class="btn-primary">Log In</button>
+    <div id="loginError"></div>
+  </div>
+
+  <!-- ============ MAIN TAB ============ -->
+  <div class="tab-content" id="tab-main">
+    <div class="greeting">Hello, <span class="name" id="greetName">—</span></div>
+    <div class="subgreeting">Here's how the term is going</div>
+
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-value" id="kpiTotalStudents">–</div>
+        <div class="kpi-label">Total Students</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" id="kpiMostSession">–</div>
+        <div class="kpi-label">Most Attended</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Attendance by Session</p>
+      <div id="chartWrap"><div class="loading-text">Loading chart...</div></div>
+    </div>
+  </div>
+
+  <!-- ============ SCAN TAB ============ -->
+  <div class="tab-content" id="tab-scan">
+    <div class="card" id="sessionCard">
+      <p class="card-title">Session</p>
+      <label for="sessionSelect">Choose the session for this scan</label>
+      <select id="sessionSelect"></select>
+      <div class="btn-row">
+        <button id="confirmBtn" class="btn-primary">Confirm &amp; Continue</button>
+      </div>
+    </div>
+
+    <div id="activeBanner" class="hidden">
+      <span class="label">Marking <span class="session" id="activeSessionLabel">Session 1</span> — <span id="counter">–/–</span> present</span>
+      <button id="changeSessionBtn" class="btn-link">change</button>
+    </div>
+
+    <div class="card hidden" id="scanCard">
+      <p class="card-title">Scanner</p>
+      <div class="btn-row">
+        <button id="startBtn" class="btn-primary">Start Camera</button>
+        <button id="stopBtn" class="btn-secondary hidden">Stop</button>
+      </div>
+      <div id="reader"></div>
+      <div class="divider">or</div>
+      <button id="uploadBtn" class="btn-secondary" style="width:100%;">Upload QR Image</button>
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="divider">or</div>
+      <div class="field">
+        <label for="manualIdsInput">Enter Student ID(s) manually (comma-separated)</label>
+        <input type="text" id="manualIdsInput" placeholder="e.g. S001, S002, S003">
+      </div>
+      <button id="manualSubmitBtn" class="btn-secondary" style="width:100%;">Mark Present</button>
+
+      <div class="divider">or</div>
+      <button id="excuseToggleBtn" class="btn-secondary" style="width:100%;">Excuse Student(s)</button>
+      <div id="excuseSection" class="hidden" style="margin-top:10px;">
+        <div class="field">
+          <label for="excuseIdsInput">Enter Student ID(s) to excuse (comma-separated)</label>
+          <input type="text" id="excuseIdsInput" placeholder="e.g. S001, S002">
+        </div>
+        <button id="excusePreviewBtn" class="btn-secondary" style="width:100%;">Review &amp; Confirm</button>
+      </div>
+
+      <div id="result" class="idle">Waiting to scan...</div>
+      <div id="queueNote" class="hidden"></div>
+    </div>
+
+    <div class="card hidden" id="localHistoryCard">
+      <p class="card-title">Recent Scans <span style="color:var(--text-dim); font-weight:400; text-transform:none; letter-spacing:normal;">(this device)</span></p>
+      <div id="historyList"></div>
+      <div id="emptyHistory">No scans yet.</div>
+      <div class="btn-row">
+        <button id="clearHistoryBtn" class="btn-danger-outline" style="width:100%;">Clear Local History</button>
+      </div>
+    </div>
+
+    <div class="card" id="serverLogCard">
+      <p class="card-title">Attendance Log <span style="color:var(--text-dim); font-weight:400; text-transform:none; letter-spacing:normal;">(all admins, saved in sheet)</span></p>
+      <div class="btn-row-2col">
+        <div class="field">
+          <label for="filterSession">Session</label>
+          <select id="filterSession"><option value="">All</option></select>
+        </div>
+        <div class="field">
+          <label for="filterStatus">Status</label>
+          <select id="filterStatus">
+            <option value="">All</option>
+            <option value="Present">Present</option>
+            <option value="Excused">Excused</option>
+            <option value="Absent">Absent (manual edits)</option>
+            <option value="Not Found">Not Found</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row-2col">
+        <div class="field">
+          <label for="filterAdmin">Admin</label>
+          <input type="text" id="filterAdmin" placeholder="e.g. sara">
+        </div>
+        <div class="field">
+          <label for="filterStudent">Student (ID or name)</label>
+          <input type="text" id="filterStudent" placeholder="e.g. S001">
+        </div>
+      </div>
+      <div class="field">
+        <label for="filterDate">Date</label>
+        <input type="date" id="filterDate">
+      </div>
+      <button id="loadLogBtn" class="btn-primary">Load Log</button>
+      <div id="logList" style="margin-top:12px;"></div>
+      <div id="emptyLog" class="hidden">No matching scans.</div>
+      <div id="logMeta"></div>
+    </div>
+  </div>
+
+  <!-- ============ SESSIONS TAB ============ -->
+  <div class="tab-content" id="tab-sessions">
+    <div class="section-header"><p class="card-title" style="margin:0;">14 Sessions</p></div>
+    <div class="field">
+      <label for="sessionSortSelect">Sort by</label>
+      <select id="sessionSortSelect">
+        <option value="number">Session Number</option>
+        <option value="desc">Attendance (High to Low)</option>
+        <option value="asc">Attendance (Low to High)</option>
+      </select>
+    </div>
+    <div id="sessionsList"><div class="loading-text">Loading sessions...</div></div>
+  </div>
+
+  <!-- ============ STUDENTS TAB ============ -->
+  <div class="tab-content" id="tab-students">
+    <div class="section-header">
+      <p class="card-title" style="margin:0;">Students</p>
+      <button class="fab" id="addStudentBtn">+</button>
+    </div>
+    <div class="field">
+      <label for="studentSearchInput">Search</label>
+      <input type="text" id="studentSearchInput" placeholder="Search by name or ID">
+    </div>
+    <div class="field">
+      <label for="studentSortSelect">Sort by</label>
+      <select id="studentSortSelect">
+        <option value="name-asc">Name (A → Z)</option>
+        <option value="name-desc">Name (Z → A)</option>
+        <option value="attend-desc">Attendance (High to Low)</option>
+        <option value="attend-asc">Attendance (Low to High)</option>
+      </select>
+    </div>
+    <div id="studentsList"><div class="loading-text">Loading students...</div></div>
+    <div id="emptyStudents" class="hidden">No students yet.</div>
+  </div>
+
+</main>
+
+<!-- Bottom nav -->
+<nav id="bottomNav" class="hidden">
+  <button class="nav-btn active" data-tab="main"><span class="icon">🏠</span>Main</button>
+  <button class="nav-btn" data-tab="scan"><span class="icon">📷</span>Scan</button>
+  <button class="nav-btn" data-tab="sessions"><span class="icon">📅</span>Sessions</button>
+  <button class="nav-btn" data-tab="students"><span class="icon">🎓</span>Students</button>
+</nav>
+
+<!-- Detail overlay (session / student) -->
+<div id="detailOverlay" class="hidden">
+  <div class="detail-header">
+    <button class="back-btn" id="detailBackBtn">←</button>
+    <div class="detail-title" id="detailTitle">Details</div>
+  </div>
+  <div id="detailContent"></div>
+</div>
+
+<!-- Add student modal -->
+<div id="modalOverlay" class="hidden">
+  <div id="modalCard">
+    <div id="addFormSection">
+      <h3>Add Student</h3>
+      <div class="field">
+        <label for="newStudentName">Full name</label>
+        <input type="text" id="newStudentName">
+      </div>
+      <div class="field">
+        <label for="newStudentPhone">Phone</label>
+        <input type="tel" id="newStudentPhone">
+      </div>
+      <div class="field">
+        <label for="newStudentEmail">Email</label>
+        <input type="email" id="newStudentEmail">
+      </div>
+      <div id="addStudentError" style="color:var(--danger); font-size:13px; min-height:16px; margin-bottom:6px;"></div>
+      <div class="btn-row">
+        <button class="btn-secondary" id="cancelAddStudent">Cancel</button>
+        <button class="btn-primary" id="submitAddStudent">Add Student</button>
+      </div>
+    </div>
+
+    <div id="existsSection" class="hidden">
+      <h3>Student Already Exists</h3>
+      <p style="color:var(--text-secondary); font-size:13px;">A student with this phone or email is already registered:</p>
+      <div class="card" style="margin:10px 0;">
+        <div class="info-row"><span class="k">Name</span><span class="v" id="existsName">-</span></div>
+        <div class="info-row"><span class="k">ID</span><span class="v" id="existsId">-</span></div>
+        <div class="info-row"><span class="k">Phone</span><span class="v" id="existsPhone">-</span></div>
+        <div class="info-row"><span class="k">Email</span><span class="v" id="existsEmail">-</span></div>
+      </div>
+      <div class="btn-row"><button class="btn-secondary" id="existsBackBtn" style="width:100%;">Back</button></div>
+    </div>
+
+    <div id="removedSection" class="hidden">
+      <h3>Previously Removed</h3>
+      <p style="color:var(--text-secondary); font-size:13px;">This phone/email belonged to a student who was removed:</p>
+      <div class="card" style="margin:10px 0;">
+        <div class="info-row"><span class="k">Name</span><span class="v" id="removedName">-</span></div>
+        <div class="info-row"><span class="k">Old ID</span><span class="v" id="removedId">-</span></div>
+      </div>
+      <p style="color:var(--text-secondary); font-size:13px;">Add them again as a new student?</p>
+      <div class="btn-row">
+        <button class="btn-secondary" id="removedNoBtn">No, Cancel</button>
+        <button class="btn-primary" id="removedYesBtn">Yes, Add Them</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete student confirmation modal -->
+<div id="deleteOverlay" class="hidden">
+  <div id="modalCard">
+    <h3 style="color:var(--danger);">Delete Student</h3>
+    <p style="color:var(--text-secondary); font-size:13px;">This will permanently remove <b id="deleteStudentName" class="mono">this student</b> from Students, their QR code, and their live attendance row. Their full record (including attendance history) will be archived in "Removed Students".</p>
+    <div class="field">
+      <label for="deleteConfirmInput">Type their full name to confirm</label>
+      <input type="text" id="deleteConfirmInput" autocomplete="off">
+    </div>
+    <div id="deleteError" style="color:var(--danger); font-size:13px; min-height:16px;"></div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="deleteCancelBtn">Cancel</button>
+      <button class="btn-primary" id="deleteConfirmBtn" style="background:var(--danger); color:#fff;" disabled>Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Per-session status edit modal (Present / Excused / Absent) -->
+<div id="statusEditOverlay" class="hidden">
+  <div id="modalCard">
+    <div id="statusSelectSection">
+      <h3>Update Attendance</h3>
+      <p style="color:var(--text-secondary); font-size:13px;">Session <b id="statusSessionLabel" class="mono">-</b> for <b id="statusStudentLabel">-</b></p>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn-secondary status-choice" data-status="Present">Present</button>
+        <button class="btn-secondary status-choice" data-status="Excused">Excused</button>
+        <button class="btn-secondary status-choice" data-status="Absent">Absent</button>
+      </div>
+      <div class="btn-row"><button class="btn-secondary" id="statusCancelBtn" style="width:100%;">Cancel</button></div>
+    </div>
+    <div id="statusConfirmSection" class="hidden">
+      <h3>Confirm Change</h3>
+      <p style="color:var(--text-secondary); font-size:14px;" id="statusConfirmText">-</p>
+      <div class="btn-row">
+        <button class="btn-secondary" id="statusBackBtn">Back</button>
+        <button class="btn-primary" id="statusConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk excuse confirmation (Scan tab) -->
+<div id="excuseConfirmOverlay" class="hidden">
+  <div id="modalCard">
+    <h3>Confirm Excuse</h3>
+    <p style="color:var(--text-secondary); font-size:13px;">This will mark the following ID(s) as <b style="color:var(--warning);">Excused</b> for <b id="excuseSessionLabel" class="mono">Session -</b>:</p>
+    <div id="excuseIdsList" class="mono" style="font-size:13px; color:var(--text-primary); margin:10px 0; word-break:break-word; background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; padding:10px;"></div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="excuseCancelBtn">Cancel</button>
+      <button class="btn-primary" id="excuseConfirmBtn">Confirm Excuse</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
+<script>
+  // ============================================================
+  // CONFIG — paste your Apps Script Web App URL here (ends in /exec)
+  // ============================================================
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxiFrGM7PHiFEQ7BdavO10n__lronBakQQzzA5tF8Z-wYU5ctcsU6GxAkGeoGXbqqw1gQ/exec";
+  // ============================================================
+
+  const SESSIONS = 16;
+  const QUEUE_KEY = 'attendanceOfflineQueue';
+  const HISTORY_KEY = 'attendanceScanHistory';
+  const HISTORY_LIMIT = 50;
+  const ADMIN_KEY = 'attendanceAdmin'; // localStorage now, so login survives closing the tab
+
+  // ---- Elements ----
+  const topBar = document.getElementById('topBar');
+  const topBarName = document.getElementById('topBarName');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const bottomNav = document.getElementById('bottomNav');
+
+  const loginCard = document.getElementById('loginCard');
+  const loginUser = document.getElementById('loginUser');
+  const loginPass = document.getElementById('loginPass');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+
+  const sessionCard = document.getElementById('sessionCard');
+  const sessionSelect = document.getElementById('sessionSelect');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const activeBanner = document.getElementById('activeBanner');
+  const activeSessionLabel = document.getElementById('activeSessionLabel');
+  const changeSessionBtn = document.getElementById('changeSessionBtn');
+  const counterSpan = document.getElementById('counter');
+  const scanCard = document.getElementById('scanCard');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const fileInput = document.getElementById('fileInput');
+  const manualIdsInput = document.getElementById('manualIdsInput');
+  const manualSubmitBtn = document.getElementById('manualSubmitBtn');
+  const excuseToggleBtn = document.getElementById('excuseToggleBtn');
+  const excuseSection = document.getElementById('excuseSection');
+  const excuseIdsInput = document.getElementById('excuseIdsInput');
+  const excusePreviewBtn = document.getElementById('excusePreviewBtn');
+  const excuseConfirmOverlay = document.getElementById('excuseConfirmOverlay');
+  const excuseSessionLabel = document.getElementById('excuseSessionLabel');
+  const excuseIdsList = document.getElementById('excuseIdsList');
+  const excuseCancelBtn = document.getElementById('excuseCancelBtn');
+  const excuseConfirmBtn = document.getElementById('excuseConfirmBtn');
+
+  const statusEditOverlay = document.getElementById('statusEditOverlay');
+  const statusSelectSection = document.getElementById('statusSelectSection');
+  const statusConfirmSection = document.getElementById('statusConfirmSection');
+  const statusSessionLabel = document.getElementById('statusSessionLabel');
+  const statusStudentLabel = document.getElementById('statusStudentLabel');
+  const statusConfirmText = document.getElementById('statusConfirmText');
+  const statusCancelBtn = document.getElementById('statusCancelBtn');
+  const statusBackBtn = document.getElementById('statusBackBtn');
+  const statusConfirmBtn = document.getElementById('statusConfirmBtn');
+  const resultDiv = document.getElementById('result');
+  const queueNote = document.getElementById('queueNote');
+  const localHistoryCard = document.getElementById('localHistoryCard');
+  const historyList = document.getElementById('historyList');
+  const emptyHistory = document.getElementById('emptyHistory');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+  const filterSession = document.getElementById('filterSession');
+  const filterStatus = document.getElementById('filterStatus');
+  const filterAdmin = document.getElementById('filterAdmin');
+  const filterStudent = document.getElementById('filterStudent');
+  const filterDate = document.getElementById('filterDate');
+  const loadLogBtn = document.getElementById('loadLogBtn');
+  const logList = document.getElementById('logList');
+  const emptyLog = document.getElementById('emptyLog');
+  const logMeta = document.getElementById('logMeta');
+
+  const greetName = document.getElementById('greetName');
+  const kpiTotalStudents = document.getElementById('kpiTotalStudents');
+  const kpiMostSession = document.getElementById('kpiMostSession');
+  const chartWrap = document.getElementById('chartWrap');
+
+  const sessionsList = document.getElementById('sessionsList');
+  const sessionSortSelect = document.getElementById('sessionSortSelect');
+  const studentsList = document.getElementById('studentsList');
+  const studentSearchInput = document.getElementById('studentSearchInput');
+  const studentSortSelect = document.getElementById('studentSortSelect');
+  const emptyStudents = document.getElementById('emptyStudents');
+  const addStudentBtn = document.getElementById('addStudentBtn');
+
+  const detailOverlay = document.getElementById('detailOverlay');
+  const detailBackBtn = document.getElementById('detailBackBtn');
+  const detailTitle = document.getElementById('detailTitle');
+  const detailContent = document.getElementById('detailContent');
+
+  const modalOverlay = document.getElementById('modalOverlay');
+  const addFormSection = document.getElementById('addFormSection');
+  const existsSection = document.getElementById('existsSection');
+  const removedSection = document.getElementById('removedSection');
+  const existsName = document.getElementById('existsName');
+  const existsId = document.getElementById('existsId');
+  const existsPhone = document.getElementById('existsPhone');
+  const existsEmail = document.getElementById('existsEmail');
+  const existsBackBtn = document.getElementById('existsBackBtn');
+  const removedName = document.getElementById('removedName');
+  const removedId = document.getElementById('removedId');
+  const removedNoBtn = document.getElementById('removedNoBtn');
+  const removedYesBtn = document.getElementById('removedYesBtn');
+  const newStudentName = document.getElementById('newStudentName');
+  const newStudentPhone = document.getElementById('newStudentPhone');
+  const newStudentEmail = document.getElementById('newStudentEmail');
+  const addStudentError = document.getElementById('addStudentError');
+  const cancelAddStudent = document.getElementById('cancelAddStudent');
+  const submitAddStudent = document.getElementById('submitAddStudent');
+
+  const deleteOverlay = document.getElementById('deleteOverlay');
+  const deleteStudentName = document.getElementById('deleteStudentName');
+  const deleteConfirmInput = document.getElementById('deleteConfirmInput');
+  const deleteError = document.getElementById('deleteError');
+  const deleteCancelBtn = document.getElementById('deleteCancelBtn');
+  const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+
+  let currentStudentDetail = null; // { student, sessions } for whichever student's detail page is open
+
+  // Populate session dropdowns (1..14)
+  for (let s = 1; s <= SESSIONS; s++) {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = 'Session ' + s;
+    sessionSelect.appendChild(opt);
+
+    const opt2 = document.createElement('option');
+    opt2.value = s; opt2.textContent = 'Session ' + s;
+    filterSession.appendChild(opt2);
+  }
+  sessionSelect.value = localStorage.getItem('attendanceLastSession') || '1';
+
+  let confirmedSession = null;
+  let presentCount = 0, totalCount = 0;
+  let lastCode = '', lastTime = 0;
+  const html5QrCode = new Html5Qrcode("reader");
+  let cameraRunning = false;
+
+  function showResult(cls, text) { resultDiv.className = cls; resultDiv.textContent = text; }
+  function checkConfigured() {
+    if (!SCRIPT_URL || SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+      loginError.textContent = 'SCRIPT_URL is not set in scanner.html — edit the CONFIG section at the top of the file.';
+      loginBtn.disabled = true;
+      return false;
+    }
+    return true;
+  }
+  function apiCall(payload) {
+    return fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).then(function (res) { return res.json(); });
+  }
+
+  // ---- Admin session (persisted in localStorage) ----
+  function getAdmin() { try { return JSON.parse(localStorage.getItem(ADMIN_KEY)); } catch (e) { return null; } }
+  function setAdmin(admin) { localStorage.setItem(ADMIN_KEY, JSON.stringify(admin)); }
+  function clearAdmin() { localStorage.removeItem(ADMIN_KEY); }
+
+  function showLoggedInUI(admin) {
+    topBarName.textContent = admin.name;
+    topBar.classList.remove('hidden');
+    loginCard.classList.add('hidden');
+    bottomNav.classList.remove('hidden');
+    greetName.textContent = admin.name;
+    renderHistory();
+    switchTab('main');       // this also triggers fetchDashboardData() for Main/Sessions
+    fetchStudentsData();     // prefetch Students tab in the background so it's warm too
+  }
+  function showLoggedOutUI() {
+    topBar.classList.add('hidden');
+    loginCard.classList.remove('hidden');
+    bottomNav.classList.add('hidden');
+    document.querySelectorAll('.tab-content').forEach(function (el) { el.classList.remove('active'); });
+  }
+
+  loginBtn.addEventListener('click', function () {
+    if (!checkConfigured()) return;
+    const username = loginUser.value.trim();
+    const password = loginPass.value;
+    if (!username || !password) { loginError.textContent = 'Enter a username and password.'; return; }
+    loginError.textContent = '';
+    loginBtn.disabled = true; loginBtn.textContent = 'Checking...';
+    apiCall({ action: 'login', username: username, password: password })
+      .then(function (res) {
+        loginBtn.disabled = false; loginBtn.textContent = 'Log In';
+        if (res.ok) {
+          setAdmin({ username: res.username, name: res.name });
+          loginPass.value = '';
+          showLoggedInUI(res);
+        } else {
+          loginError.textContent = res.message || 'Login failed.';
+        }
+      })
+      .catch(function () {
+        loginBtn.disabled = false; loginBtn.textContent = 'Log In';
+        loginError.textContent = 'Could not reach the server. Check your connection.';
+      });
+  });
+
+  logoutBtn.addEventListener('click', function () {
+    if (cameraRunning) { html5QrCode.stop().catch(function () {}); cameraRunning = false; }
+    clearAdmin();
+    confirmedSession = null;
+    showLoggedOutUI();
+  });
+
+  // ============================================================
+  // BOTTOM NAV / TAB SWITCHING
+  // ============================================================
+  function switchTab(name) {
+    activeTab = name;
+    document.querySelectorAll('.tab-content').forEach(function (el) { el.classList.remove('active'); });
+    document.getElementById('tab-' + name).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    if (name === 'main') {
+      if (dashboardData) renderMainDashboard(); else showMainLoading();
+      fetchDashboardData();
+    }
+    if (name === 'sessions') {
+      if (dashboardData) renderSessionsList(); else sessionsList.innerHTML = '<div class="loading-text">Loading sessions...</div>';
+      fetchDashboardData();
+    }
+    if (name === 'students') {
+      if (studentsData !== null) renderStudentsList(); else studentsList.innerHTML = '<div class="loading-text">Loading students...</div>';
+      fetchStudentsData();
+    }
+  }
+  document.querySelectorAll('.nav-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { switchTab(btn.dataset.tab); });
+  });
+
+  // ============================================================
+  // MAIN TAB — dashboard
+  // (Shares its data with the Sessions tab — both come from "getDashboard".
+  //  Cached in dashboardData: switching tabs paints instantly from cache, then
+  //  a background refresh silently updates the view when fresh data arrives.)
+  // ============================================================
+  let activeTab = 'main';
+  let dashboardData = null;   // cached getDashboard() response
+  let studentsData = null;    // cached getStudentsList() response; null = not yet loaded
+
+  function showMainLoading() {
+    kpiTotalStudents.textContent = '…';
+    kpiMostSession.textContent = '…';
+    chartWrap.innerHTML = '<div class="loading-text">Loading chart...</div>';
+  }
+
+  function fetchDashboardData() {
+    return apiCall({ action: 'getDashboard' }).then(function (res) {
+      if (!res.ok) {
+        if (!dashboardData) {
+          if (activeTab === 'main') chartWrap.innerHTML = '<div class="loading-text">' + (res.message || 'Could not load.') + '</div>';
+          if (activeTab === 'sessions') sessionsList.innerHTML = '<div class="loading-text">' + (res.message || 'Could not load.') + '</div>';
+        }
+        return;
+      }
+      dashboardData = res;
+      if (activeTab === 'main') renderMainDashboard();
+      if (activeTab === 'sessions') renderSessionsList();
+    }).catch(function () {
+      if (!dashboardData) {
+        if (activeTab === 'main') chartWrap.innerHTML = '<div class="loading-text">Could not reach the server.</div>';
+        if (activeTab === 'sessions') sessionsList.innerHTML = '<div class="loading-text">Could not reach the server.</div>';
+      }
+    });
+  }
+
+  function renderMainDashboard() {
+    if (!dashboardData) return;
+    const res = dashboardData;
+    kpiTotalStudents.textContent = res.totalStudents;
+    kpiMostSession.textContent = res.mostAttendedSession.count > 0
+      ? 'S' + res.mostAttendedSession.session + ' (' + res.mostAttendedSession.count + ')'
+      : '—';
+
+    const maxCount = Math.max.apply(null, res.sessionCounts.map(function (s) { return s.count; }).concat([1]));
+    chartWrap.innerHTML = '';
+    res.sessionCounts.forEach(function (sc) {
+      const col = document.createElement('div');
+      col.className = 'bar-col';
+      const countLabel = document.createElement('div');
+      countLabel.className = 'bar-count';
+      countLabel.textContent = sc.count;
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = Math.max(2, (sc.count / maxCount) * 100) + '%';
+      const label = document.createElement('div');
+      label.className = 'bar-label';
+      label.textContent = sc.session;
+      col.appendChild(countLabel);
+      col.appendChild(bar);
+      col.appendChild(label);
+      chartWrap.appendChild(col);
+    });
+  }
+
+  // ============================================================
+  // SESSIONS TAB (reads from the same dashboardData cache as Main)
+  // ============================================================
+  function renderSessionsList() {
+    if (!dashboardData) return;
+    const sortMode = sessionSortSelect.value;
+    let counts = dashboardData.sessionCounts.slice();
+    if (sortMode === 'desc') counts.sort(function (a, b) { return b.count - a.count; });
+    else if (sortMode === 'asc') counts.sort(function (a, b) { return a.count - b.count; });
+    else counts.sort(function (a, b) { return a.session - b.session; });
+
+    sessionsList.innerHTML = '';
+    counts.forEach(function (sc) {
+      const card = document.createElement('div');
+      card.className = 'list-card';
+      card.innerHTML =
+        '<div><div class="title">Session ' + sc.session + '</div>' +
+        '<div class="subtitle">attended: ' + sc.count + ' / ' + dashboardData.totalStudents + '</div></div>' +
+        '<div style="display:flex;align-items:center;"><span class="stat">' + sc.count + '</span><span class="chevron">›</span></div>';
+      card.addEventListener('click', function () { openSessionDetail(sc.session); });
+      sessionsList.appendChild(card);
+    });
+  }
+  sessionSortSelect.addEventListener('change', renderSessionsList);
+
+  function openSessionDetail(session) {
+    detailTitle.textContent = 'Session ' + session;
+    detailContent.innerHTML = '<div class="loading-text">Loading attendees...</div>';
+    detailOverlay.classList.remove('hidden');
+    apiCall({ action: 'getSessionAttendees', session: session }).then(function (res) {
+      if (!res.ok) { detailContent.innerHTML = '<div class="loading-text">' + (res.message || 'Could not load.') + '</div>'; return; }
+      let html = '<div class="card"><p class="card-title">Summary</p>' +
+        '<div class="info-row"><span class="k">Attended</span><span class="v">' + res.count + ' / ' + res.total + '</span></div></div>';
+      html += '<div class="card"><p class="card-title">Attendees</p>';
+      if (res.attendees.length === 0) {
+        html += '<div class="loading-text">No one has attended this session yet.</div>';
+      } else {
+        res.attendees.forEach(function (a) {
+          html += '<div class="history-item"><div class="history-main">' +
+            '<div class="history-text">' + escapeHtml(a.name || a.id) + '</div>' +
+            '<div class="history-meta">ID: ' + escapeHtml(a.id) + (a.time ? ' · ' + escapeHtml(a.time) : '') + '</div>' +
+            '</div><span class="badge badge-success">present</span></div>';
+        });
+      }
+      html += '</div>';
+      detailContent.innerHTML = html;
+    }).catch(function () {
+      detailContent.innerHTML = '<div class="loading-text">Could not reach the server.</div>';
+    });
+  }
+
+  // ============================================================
+  // STUDENTS TAB
+  // ============================================================
+  function fetchStudentsData() {
+    return apiCall({ action: 'getStudentsList' }).then(function (res) {
+      if (!res.ok) {
+        if (studentsData === null) studentsList.innerHTML = '<div class="loading-text">' + (res.message || 'Could not load.') + '</div>';
+        return;
+      }
+      studentsData = res.students;
+      if (activeTab === 'students') renderStudentsList();
+    }).catch(function () {
+      if (studentsData === null) studentsList.innerHTML = '<div class="loading-text">Could not reach the server.</div>';
+    });
+  }
+
+  function renderStudentsList() {
+    if (studentsData === null) return;
+    const query = studentSearchInput.value.trim().toLowerCase();
+    let list = studentsData.filter(function (s) {
+      if (!query) return true;
+      return String(s.name || '').toLowerCase().indexOf(query) !== -1 ||
+             String(s.id || '').toLowerCase().indexOf(query) !== -1;
+    });
+
+    const sortMode = studentSortSelect.value;
+    if (sortMode === 'name-asc') list.sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+    else if (sortMode === 'name-desc') list.sort(function (a, b) { return String(b.name).localeCompare(String(a.name)); });
+    else if (sortMode === 'attend-desc') list.sort(function (a, b) { return b.attendedCount - a.attendedCount; });
+    else if (sortMode === 'attend-asc') list.sort(function (a, b) { return a.attendedCount - b.attendedCount; });
+
+    studentsList.innerHTML = '';
+    if (studentsData.length === 0) { emptyStudents.textContent = 'No students yet.'; emptyStudents.classList.remove('hidden'); return; }
+    if (list.length === 0) { emptyStudents.textContent = 'No students match your search.'; emptyStudents.classList.remove('hidden'); return; }
+    emptyStudents.classList.add('hidden');
+
+    list.forEach(function (s) {
+      const card = document.createElement('div');
+      card.className = 'list-card';
+      card.innerHTML =
+        '<div><div class="title">' + escapeHtml(s.name || s.id) + '</div>' +
+        '<div class="subtitle">ID: ' + escapeHtml(s.id) + ' · attended ' + s.attendedCount + ' session' + (s.attendedCount === 1 ? '' : 's') + '</div></div>' +
+        '<span class="chevron">›</span>';
+      card.addEventListener('click', function () { openStudentDetail(s.id); });
+      studentsList.appendChild(card);
+    });
+  }
+  studentSearchInput.addEventListener('input', renderStudentsList);
+  studentSortSelect.addEventListener('change', renderStudentsList);
+
+  function openStudentDetail(id) {
+    detailTitle.textContent = 'Student';
+    detailContent.innerHTML = '<div class="loading-text">Loading student...</div>';
+    detailOverlay.classList.remove('hidden');
+    apiCall({ action: 'getStudentDetail', id: id }).then(function (res) {
+      if (!res.ok) { detailContent.innerHTML = '<div class="loading-text">' + (res.message || 'Could not load.') + '</div>'; return; }
+      currentStudentDetail = res;
+      const s = res.student;
+      detailTitle.textContent = s.name || s.id;
+
+      const phoneCell = s.phone
+        ? '<div class="v-link-row"><a class="contact-link" href="tel:' + escapeHtml(s.phone) + '">' + escapeHtml(s.phone) + '</a>' +
+          '<button class="copy-btn" data-copy="' + escapeHtml(s.phone) + '">Copy</button></div>'
+        : '<span class="v">-</span>';
+      const emailCell = s.email
+        ? '<div class="v-link-row"><a class="contact-link" href="mailto:' + escapeHtml(s.email) + '">' + escapeHtml(s.email) + '</a>' +
+          '<button class="copy-btn" data-copy="' + escapeHtml(s.email) + '">Copy</button></div>'
+        : '<span class="v">-</span>';
+
+      let html = '<div class="card"><p class="card-title">Details</p>' +
+        '<div class="info-row"><span class="k">Name</span><span class="v">' + escapeHtml(s.name || '-') + '</span></div>' +
+        '<div class="info-row"><span class="k">ID</span><span class="v">' + escapeHtml(s.id) + '</span></div>' +
+        '<div class="info-row"><span class="k">Phone</span>' + phoneCell + '</div>' +
+        '<div class="info-row"><span class="k">Email</span>' + emailCell + '</div>' +
+        '</div>';
+      html += '<div class="card"><p class="card-title">Sessions Attended <span style="color:var(--text-dim); font-weight:400; text-transform:none; letter-spacing:normal;">(tap to edit)</span></p><div>';
+      res.sessions.forEach(function (sess) {
+        const cls = sess.status === 'Present' ? 'present' : sess.status === 'Excused' ? 'excused' : 'absent';
+        html += '<button type="button" class="session-pill ' + cls + '" data-session="' + sess.session + '" title="Session ' + sess.session + ' — ' + sess.status + (sess.time ? ' (' + sess.time + ')' : '') + '">' + sess.session + '</button>';
+      });
+      html += '</div></div>';
+      html += '<div class="btn-row">' +
+        '<button class="btn-secondary" id="downloadCardBtn" style="width:100%;">Download Card</button>' +
+        '</div>' +
+        '<div class="btn-row">' +
+        '<button class="btn-danger-outline" id="deleteStudentBtn" style="width:100%; padding:12px;">Delete Student</button>' +
+        '</div>';
+      detailContent.innerHTML = html;
+
+      document.getElementById('downloadCardBtn').addEventListener('click', function () {
+        downloadStudentCardPDF(s);
+      });
+      document.getElementById('deleteStudentBtn').addEventListener('click', function () {
+        openDeleteConfirm(s);
+      });
+      detailContent.querySelectorAll('.copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          const value = btn.dataset.copy;
+          const doneLabel = function () {
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(function () { btn.textContent = original; }, 1200);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).then(doneLabel).catch(function () {
+              alert('Could not copy automatically — value: ' + value);
+            });
+          } else {
+            alert('Could not copy automatically — value: ' + value);
+          }
+        });
+      });
+      detailContent.querySelectorAll('.session-pill').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openStatusEdit(s.id, s.name || s.id, btn.dataset.session);
+        });
+      });
+    }).catch(function () {
+      detailContent.innerHTML = '<div class="loading-text">Could not reach the server.</div>';
+    });
+  }
+
+  detailBackBtn.addEventListener('click', function () { detailOverlay.classList.add('hidden'); });
+
+  // ---- Delete student ----
+  function openDeleteConfirm(student) {
+    deleteStudentName.textContent = student.name || student.id;
+    deleteConfirmInput.value = '';
+    deleteError.textContent = '';
+    deleteConfirmBtn.disabled = true;
+    deleteConfirmBtn.textContent = 'Delete';
+    deleteOverlay.classList.remove('hidden');
+    deleteConfirmInput.focus();
+  }
+  deleteConfirmInput.addEventListener('input', function () {
+    const s = currentStudentDetail && currentStudentDetail.student;
+    const match = s && deleteConfirmInput.value.trim().toLowerCase() === String(s.name).trim().toLowerCase();
+    deleteConfirmBtn.disabled = !match;
+  });
+  deleteCancelBtn.addEventListener('click', function () { deleteOverlay.classList.add('hidden'); });
+  deleteConfirmBtn.addEventListener('click', function () {
+    const s = currentStudentDetail && currentStudentDetail.student;
+    if (!s) return;
+    const admin = getAdmin();
+    deleteConfirmBtn.disabled = true;
+    deleteConfirmBtn.textContent = 'Deleting...';
+    apiCall({ action: 'deleteStudent', id: s.id, confirmName: deleteConfirmInput.value.trim(), admin: admin ? admin.name : '' })
+      .then(function (res) {
+        if (!res.ok) {
+          deleteError.textContent = res.message || 'Could not delete student.';
+          deleteConfirmBtn.disabled = false;
+          deleteConfirmBtn.textContent = 'Delete';
+          return;
+        }
+        deleteOverlay.classList.add('hidden');
+        detailOverlay.classList.add('hidden');
+        fetchStudentsData();  // refresh cache so the students list reflects the deletion
+        dashboardData = null; // counts changed too — force a fresh fetch next time Main/Sessions is viewed
+      })
+      .catch(function () {
+        deleteError.textContent = 'Could not reach the server.';
+        deleteConfirmBtn.disabled = false;
+        deleteConfirmBtn.textContent = 'Delete';
+      });
+  });
+
+  // ---- Add student modal ----
+  function showModalSection(section) {
+    addFormSection.classList.toggle('hidden', section !== 'form');
+    existsSection.classList.toggle('hidden', section !== 'exists');
+    removedSection.classList.toggle('hidden', section !== 'removed');
+  }
+
+  addStudentBtn.addEventListener('click', function () {
+    newStudentName.value = ''; newStudentPhone.value = ''; newStudentEmail.value = '';
+    addStudentError.textContent = '';
+    submitAddStudent.disabled = false; submitAddStudent.textContent = 'Add Student';
+    showModalSection('form');
+    modalOverlay.classList.remove('hidden');
+  });
+  cancelAddStudent.addEventListener('click', function () { modalOverlay.classList.add('hidden'); });
+  existsBackBtn.addEventListener('click', function () { showModalSection('form'); });
+  removedNoBtn.addEventListener('click', function () { showModalSection('form'); });
+
+  let pendingNewStudent = null; // { name, phone, email } while a removed-student confirmation is showing
+
+  function actuallyAddStudent(name, phone, email) {
+    submitAddStudent.disabled = true;
+    submitAddStudent.textContent = 'Adding...';
+    apiCall({ action: 'addStudent', name: name, phone: phone, email: email })
+      .then(function (res) {
+        submitAddStudent.disabled = false;
+        submitAddStudent.textContent = 'Add Student';
+        if (!res.ok) { addStudentError.textContent = res.message || 'Could not add student.'; return; }
+        modalOverlay.classList.add('hidden');
+        fetchStudentsData();  // refresh cache so the new student shows up
+        dashboardData = null; // total student count changed — force a fresh fetch
+        downloadStudentCardPDF(res);
+      })
+      .catch(function () {
+        submitAddStudent.disabled = false;
+        submitAddStudent.textContent = 'Add Student';
+        addStudentError.textContent = 'Could not reach the server.';
+      });
+  }
+
+  removedYesBtn.addEventListener('click', function () {
+    if (!pendingNewStudent) return;
+    showModalSection('form');
+    actuallyAddStudent(pendingNewStudent.name, pendingNewStudent.phone, pendingNewStudent.email);
+    pendingNewStudent = null;
+  });
+
+  submitAddStudent.addEventListener('click', function () {
+    const name = newStudentName.value.trim();
+    const phone = newStudentPhone.value.trim();
+    const email = newStudentEmail.value.trim();
+    if (!name) { addStudentError.textContent = 'Name is required.'; return; }
+    addStudentError.textContent = '';
+    submitAddStudent.disabled = true;
+    submitAddStudent.textContent = 'Checking...';
+
+    apiCall({ action: 'checkStudent', phone: phone, email: email })
+      .then(function (res) {
+        submitAddStudent.disabled = false;
+        submitAddStudent.textContent = 'Add Student';
+        if (!res.ok) { addStudentError.textContent = res.message || 'Could not check student.'; return; }
+
+        if (res.status === 'exists') {
+          existsName.textContent = res.student.name || '-';
+          existsId.textContent = res.student.id || '-';
+          existsPhone.textContent = res.student.phone || '-';
+          existsEmail.textContent = res.student.email || '-';
+          showModalSection('exists');
+          return;
+        }
+        if (res.status === 'removed') {
+          removedName.textContent = res.student.name || '-';
+          removedId.textContent = res.student.id || '-';
+          pendingNewStudent = { name: name, phone: phone, email: email };
+          showModalSection('removed');
+          return;
+        }
+        actuallyAddStudent(name, phone, email);
+      })
+      .catch(function () {
+        submitAddStudent.disabled = false;
+        submitAddStudent.textContent = 'Add Student';
+        addStudentError.textContent = 'Could not reach the server.';
+      });
+  });
+
+  function downloadStudentCardPDF(student) {
+    const qrUrl = student.qrUrl || ('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(student.id));
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = function () {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/png');
+
+        const { jsPDF } = window.jspdf;
+        // Explicit landscape orientation + generous size (standard ID-card-ish, in mm)
+        const W = 100, H = 62;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [W, H] });
+
+        doc.setFillColor(10, 14, 20);
+        doc.rect(0, 0, W, H, 'F');
+
+        doc.setTextColor(46, 200, 102);
+        doc.setFontSize(7);
+        doc.text('PROJECT ENGINE ATTENDANCE', 6, 7);
+
+        // QR on the left, with margin on all sides
+        const qrSize = 44;
+        doc.addImage(dataUrl, 'PNG', 6, 12, qrSize, qrSize);
+
+        // Text block on the right, wrapped to fit remaining width
+        const textX = 6 + qrSize + 6;      // left edge of text block
+        const textMaxWidth = W - textX - 6; // right margin
+        let y = 16;
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(13);
+        const nameLines = doc.splitTextToSize(String(student.name || ''), textMaxWidth);
+        doc.text(nameLines, textX, y);
+        y += nameLines.length * 6 + 4;
+
+        doc.setFontSize(9);
+        doc.setTextColor(180, 180, 180);
+        doc.text('ID: ' + student.id, textX, y);
+        y += 7;
+
+        if (student.phone) {
+          const phoneLines = doc.splitTextToSize('Phone: ' + student.phone, textMaxWidth);
+          doc.text(phoneLines, textX, y);
+          y += phoneLines.length * 5 + 2;
+        }
+        if (student.email) {
+          const emailLines = doc.splitTextToSize('Email: ' + student.email, textMaxWidth);
+          doc.text(emailLines, textX, y);
+          y += emailLines.length * 5 + 2;
+        }
+
+        doc.save(student.id + '_qr_card.pdf');
+      } catch (e) {
+        alert('Could not generate the QR card PDF (' + e.message + '). You can still find their QR in the Codes sheet.');
+      }
+    };
+    img.onerror = function () {
+      alert('Could not load the QR image for the PDF. You can still find their QR in the Codes sheet.');
+    };
+    img.src = qrUrl;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ============================================================
+  // SCAN TAB (camera scanning, offline queue, local history, server log)
+  // ============================================================
+  function getHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { return []; } }
+  function saveHistoryList(list) { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+  function addHistoryEntry(entry) {
+    const list = getHistory();
+    list.unshift(entry);
+    while (list.length > HISTORY_LIMIT) list.pop();
+    saveHistoryList(list);
+    renderHistory();
+  }
+  function badgeClass(status) {
+    if (status === 'success') return 'badge-success';
+    if (status === 'excused' || status === 'excused-dup') return 'badge-excused';
+    if (status === 'warning') return 'badge-warning';
+    return 'badge-error';
+  }
+  function badgeLabel(entry) {
+    if (entry.status === 'success') return 'present';
+    if (entry.status === 'excused') return 'excused';
+    if (entry.status === 'excused-dup') return 'dup';
+    if (entry.status === 'warning') return entry.queued ? 'queued' : 'dup';
+    return 'error';
+  }
+  function renderHistory() {
+    const list = getHistory();
+    historyList.innerHTML = '';
+    localHistoryCard.classList.toggle('hidden', list.length === 0 && getAdmin() === null);
+    if (getAdmin()) localHistoryCard.classList.remove('hidden');
+    emptyHistory.classList.toggle('hidden', list.length > 0);
+    list.forEach(function (entry) {
+      const row = document.createElement('div');
+      row.className = 'history-item';
+      row.innerHTML =
+        '<div class="history-main"><div class="history-text">' + escapeHtml(entry.message) + '</div>' +
+        '<div class="history-meta">' + entry.time + ' · Session ' + entry.session + '</div></div>' +
+        '<span class="badge ' + badgeClass(entry.status) + '">' + badgeLabel(entry) + '</span>';
+      historyList.appendChild(row);
+    });
+  }
+  clearHistoryBtn.addEventListener('click', function () {
+    if (confirm('Clear local scan history on this device? This does not affect the spreadsheet.')) {
+      saveHistoryList([]); renderHistory();
+    }
+  });
+
+  loadLogBtn.addEventListener('click', function () {
+    loadLogBtn.disabled = true; loadLogBtn.textContent = 'Loading...';
+    const filters = {
+      session: filterSession.value, status: filterStatus.value,
+      admin: filterAdmin.value.trim(), studentId: filterStudent.value.trim(), date: filterDate.value
+    };
+    apiCall({ action: 'getLogs', filters: filters }).then(function (res) {
+      loadLogBtn.disabled = false; loadLogBtn.textContent = 'Load Log';
+      logList.innerHTML = '';
+      if (!res.ok) { emptyLog.textContent = res.message || 'Could not load log.'; emptyLog.classList.remove('hidden'); logMeta.textContent = ''; return; }
+      emptyLog.classList.toggle('hidden', res.logs.length > 0);
+      emptyLog.textContent = 'No matching scans.';
+      res.logs.forEach(function (log) {
+        const row = document.createElement('div');
+        row.className = 'history-item';
+        const st = log.status.toLowerCase();
+        let cls = 'badge-error';
+        if (st.indexOf('present') !== -1) cls = st.indexOf('already') !== -1 ? 'badge-warning' : 'badge-success';
+        else if (st.indexOf('excused') !== -1) cls = 'badge-excused';
+        else if (st.indexOf('absent') !== -1) cls = 'badge-warning';
+        row.innerHTML =
+          '<div class="history-main"><div class="history-text">' + escapeHtml(log.name || log.id) + ' (' + escapeHtml(log.id) + ') — by ' + escapeHtml(log.admin) + '</div>' +
+          '<div class="history-meta">' + log.time + ' · Session ' + log.session + '</div></div>' +
+          '<span class="badge ' + cls + '">' + log.status.toLowerCase() + '</span>';
+        logList.appendChild(row);
+      });
+      logMeta.textContent = 'Showing ' + res.logs.length + ' of ' + res.total + ' matching scan(s), most recent first.';
+    }).catch(function () {
+      loadLogBtn.disabled = false; loadLogBtn.textContent = 'Load Log';
+      logMeta.textContent = 'Could not reach the server.';
+    });
+  });
+
+  function getQueue() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch (e) { return []; } }
+  function setQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+  function queueScan(payload) { const q = getQueue(); q.push(payload); setQueue(q); updateQueueNote(); }
+  function updateQueueNote() {
+    const q = getQueue();
+    if (q.length === 0) { queueNote.classList.add('hidden'); return; }
+    queueNote.classList.remove('hidden');
+    queueNote.textContent = q.length + ' scan(s) queued offline — will sync automatically.';
+  }
+  function flushQueue() {
+    if (!checkConfigured()) return;
+    const q = getQueue();
+    if (q.length === 0) return;
+    const remaining = [];
+    let chain = Promise.resolve();
+    q.forEach(function (payload) {
+      chain = chain.then(function () {
+        return apiCall(payload)
+          .then(function (res) { if (!(res && res.ok)) remaining.push(payload); })
+          .catch(function () { remaining.push(payload); });
+      });
+    });
+    chain.then(function () { setQueue(remaining); updateQueueNote(); });
+  }
+  setInterval(flushQueue, 8000);
+  window.addEventListener('online', flushQueue);
+
+  confirmBtn.addEventListener('click', function () {
+    if (!checkConfigured()) return;
+    confirmedSession = sessionSelect.value;
+    localStorage.setItem('attendanceLastSession', confirmedSession);
+    sessionCard.classList.add('hidden');
+    activeBanner.classList.remove('hidden');
+    scanCard.classList.remove('hidden');
+    activeSessionLabel.textContent = 'Session ' + confirmedSession;
+    presentCount = 0; totalCount = 0;
+    counterSpan.textContent = '...';
+    apiCall({ action: 'count', session: confirmedSession }).then(function (res) {
+      if (res.ok) { presentCount = res.present; totalCount = res.total; }
+      counterSpan.textContent = presentCount + ' / ' + totalCount;
+    }).catch(function () { counterSpan.textContent = '–/–'; });
+  });
+
+  changeSessionBtn.addEventListener('click', function () {
+    if (cameraRunning) { html5QrCode.stop().catch(function () {}); cameraRunning = false; startBtn.classList.remove('hidden'); stopBtn.classList.add('hidden'); }
+    confirmedSession = null;
+    sessionCard.classList.remove('hidden');
+    activeBanner.classList.add('hidden');
+    scanCard.classList.add('hidden');
+    showResult('idle', 'Waiting to scan...');
+  });
+
+  function invalidateAttendanceCaches() {
+    dashboardData = null;
+    studentsData = null;
+  }
+
+  function processCode(decodedText, allowRepeat) {
+    const now = Date.now();
+    const key = decodedText + '|' + confirmedSession;
+    if (!allowRepeat && key === lastCode && (now - lastTime) < 3000) return;
+    lastCode = key; lastTime = now;
+    if (!checkConfigured()) return;
+    const admin = getAdmin();
+    if (!admin) { showResult('error', 'Not logged in.'); return; }
+
+    showResult('idle', 'Checking...');
+    const payload = { id: decodedText, session: confirmedSession, admin: admin.name };
+    const timeLabel = new Date().toLocaleTimeString();
+
+    apiCall(payload).then(function (res) {
+      const cls = res.ok ? (res.alreadyMarked ? 'warning' : 'success') : 'error';
+      showResult(cls, res.message);
+      addHistoryEntry({ time: timeLabel, session: confirmedSession, message: res.message, status: cls, queued: false });
+      if (res.ok && !res.alreadyMarked) {
+        presentCount += 1; counterSpan.textContent = presentCount + ' / ' + totalCount;
+        invalidateAttendanceCaches();
+      }
+    }).catch(function () {
+      queueScan(payload);
+      const msg = 'Offline — ID ' + decodedText + ' queued for Session ' + confirmedSession;
+      showResult('warning', msg);
+      addHistoryEntry({ time: timeLabel, session: confirmedSession, message: msg, status: 'warning', queued: true });
+    });
+  }
+
+  startBtn.addEventListener('click', function () {
+    showResult('idle', 'Requesting camera access...');
+    html5QrCode.start(
+      { facingMode: "environment" }, { fps: 10, qrbox: 250 },
+      function (decodedText) { processCode(decodedText, false); }
+    ).then(function () {
+      cameraRunning = true;
+      startBtn.classList.add('hidden');
+      stopBtn.classList.remove('hidden');
+      showResult('idle', 'Point camera at a student QR code');
+    }).catch(function (err) {
+      showResult('error', 'Camera error: ' + err + ' (try Upload QR Image instead)');
+    });
+  });
+  stopBtn.addEventListener('click', function () {
+    if (cameraRunning) {
+      html5QrCode.stop().then(function () {
+        cameraRunning = false; startBtn.classList.remove('hidden'); stopBtn.classList.add('hidden');
+        showResult('idle', 'Camera stopped');
+      });
+    }
+  });
+  uploadBtn.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    showResult('idle', 'Reading image...');
+    html5QrCode.scanFile(file, true)
+      .then(function (decodedText) { processCode(decodedText, true); })
+      .catch(function (err) { showResult('error', 'Could not read QR from image: ' + err); });
+  });
+
+  // ---- Manual ID entry (one or more, comma-separated) ----
+  function processManualIds() {
+    if (!checkConfigured()) return;
+    const admin = getAdmin();
+    if (!admin) { showResult('error', 'Not logged in.'); return; }
+    if (!confirmedSession) { showResult('error', 'Confirm a session first.'); return; }
+
+    const ids = manualIdsInput.value.split(',')
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
+    if (ids.length === 0) return;
+
+    manualSubmitBtn.disabled = true;
+    manualSubmitBtn.textContent = 'Processing...';
+    showResult('idle', 'Processing ' + ids.length + ' ID(s)...');
+
+    let successCount = 0, dupCount = 0, errorCount = 0;
+    let chain = Promise.resolve();
+
+    ids.forEach(function (id) {
+      chain = chain.then(function () {
+        const payload = { id: id, session: confirmedSession, admin: admin.name };
+        const timeLabel = new Date().toLocaleTimeString();
+        return apiCall(payload)
+          .then(function (res) {
+            const cls = res.ok ? (res.alreadyMarked ? 'warning' : 'success') : 'error';
+            addHistoryEntry({ time: timeLabel, session: confirmedSession, message: res.message, status: cls, queued: false });
+            if (res.ok && !res.alreadyMarked) {
+              successCount++; presentCount += 1; counterSpan.textContent = presentCount + ' / ' + totalCount;
+              invalidateAttendanceCaches();
+            } else if (res.ok && res.alreadyMarked) {
+              dupCount++;
+            } else {
+              errorCount++;
+            }
+          })
+          .catch(function () {
+            queueScan(payload);
+            const msg = 'Offline — ID ' + id + ' queued for Session ' + confirmedSession;
+            addHistoryEntry({ time: timeLabel, session: confirmedSession, message: msg, status: 'warning', queued: true });
+          });
+      });
+    });
+
+    chain.then(function () {
+      manualSubmitBtn.disabled = false;
+      manualSubmitBtn.textContent = 'Mark Present';
+      manualIdsInput.value = '';
+      const summary = successCount + ' marked present, ' + dupCount + ' already present' +
+        (errorCount ? ', ' + errorCount + ' not found' : '') + '.';
+      showResult(errorCount > 0 ? 'warning' : 'success', summary);
+    });
+  }
+  manualSubmitBtn.addEventListener('click', processManualIds);
+  manualIdsInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') processManualIds();
+  });
+
+  // ---- Bulk excuse (Scan tab) ----
+  let pendingExcuseIds = [];
+
+  excuseToggleBtn.addEventListener('click', function () {
+    excuseSection.classList.toggle('hidden');
+  });
+
+  excusePreviewBtn.addEventListener('click', function () {
+    if (!confirmedSession) { showResult('error', 'Confirm a session first.'); return; }
+    const ids = excuseIdsInput.value.split(',')
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
+    if (ids.length === 0) return;
+
+    pendingExcuseIds = ids;
+    excuseSessionLabel.textContent = 'Session ' + confirmedSession;
+    excuseIdsList.textContent = ids.join(', ');
+    excuseConfirmOverlay.classList.remove('hidden');
+  });
+
+  excuseCancelBtn.addEventListener('click', function () { excuseConfirmOverlay.classList.add('hidden'); });
+
+  excuseConfirmBtn.addEventListener('click', function () {
+    if (!checkConfigured()) return;
+    const admin = getAdmin();
+    if (!admin) { showResult('error', 'Not logged in.'); return; }
+
+    excuseConfirmBtn.disabled = true;
+    excuseConfirmBtn.textContent = 'Processing...';
+
+    let successCount = 0, alreadyCount = 0, errorCount = 0;
+    let chain = Promise.resolve();
+
+    pendingExcuseIds.forEach(function (id) {
+      chain = chain.then(function () {
+        const timeLabel = new Date().toLocaleTimeString();
+        return apiCall({ action: 'setStatus', id: id, session: confirmedSession, status: 'Excused', admin: admin.name, via: 'Bulk Excuse' })
+          .then(function (res) {
+            // Shown truthfully as "excused" in Recent Scans — not masked as present.
+            const cls = res.ok ? (res.alreadySame ? 'excused-dup' : 'excused') : 'error';
+            addHistoryEntry({ time: timeLabel, session: confirmedSession, message: res.message, status: cls, queued: false });
+            if (res.ok && !res.alreadySame) { successCount++; invalidateAttendanceCaches(); }
+            else if (res.ok) alreadyCount++;
+            else errorCount++;
+          })
+          .catch(function () {
+            errorCount++;
+            addHistoryEntry({ time: timeLabel, session: confirmedSession, message: 'Could not excuse ID ' + id + ' (network error).', status: 'error', queued: false });
+          });
+      });
+    });
+
+    chain.then(function () {
+      excuseConfirmBtn.disabled = false;
+      excuseConfirmBtn.textContent = 'Confirm Excuse';
+      excuseConfirmOverlay.classList.add('hidden');
+      excuseSection.classList.add('hidden');
+      excuseIdsInput.value = '';
+      const summary = successCount + ' marked excused, ' + alreadyCount + ' already excused' +
+        (errorCount ? ', ' + errorCount + ' failed' : '') + '.';
+      showResult(errorCount > 0 ? 'warning' : 'success', summary);
+    });
+  });
+
+  // ---- Per-session status edit (from student detail page) ----
+  let pendingStatusEdit = null; // { id, name, session, status }
+
+  function showStatusSection(section) {
+    statusSelectSection.classList.toggle('hidden', section !== 'select');
+    statusConfirmSection.classList.toggle('hidden', section !== 'confirm');
+  }
+
+  function openStatusEdit(studentId, studentName, session) {
+    pendingStatusEdit = { id: studentId, name: studentName, session: session, status: null };
+    statusSessionLabel.textContent = session;
+    statusStudentLabel.textContent = studentName;
+    showStatusSection('select');
+    statusEditOverlay.classList.remove('hidden');
+  }
+
+  document.querySelectorAll('.status-choice').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!pendingStatusEdit) return;
+      const status = btn.dataset.status;
+      pendingStatusEdit.status = status;
+      statusConfirmText.innerHTML = 'Set Session <b class="mono">' + pendingStatusEdit.session + '</b> for <b>' +
+        escapeHtml(pendingStatusEdit.name) + '</b> to <b>' + status + '</b>?';
+      showStatusSection('confirm');
+    });
+  });
+
+  statusCancelBtn.addEventListener('click', function () { statusEditOverlay.classList.add('hidden'); });
+  statusBackBtn.addEventListener('click', function () { showStatusSection('select'); });
+
+  statusConfirmBtn.addEventListener('click', function () {
+    if (!pendingStatusEdit || !pendingStatusEdit.status) return;
+    const admin = getAdmin();
+    statusConfirmBtn.disabled = true;
+    statusConfirmBtn.textContent = 'Saving...';
+
+    apiCall({
+      action: 'setStatus', id: pendingStatusEdit.id, session: pendingStatusEdit.session,
+      status: pendingStatusEdit.status, admin: admin ? admin.name : '', via: 'Manual Edit'
+    }).then(function (res) {
+      statusConfirmBtn.disabled = false;
+      statusConfirmBtn.textContent = 'Confirm';
+      if (!res.ok) { alert(res.message || 'Could not update.'); return; }
+      invalidateAttendanceCaches();
+      statusEditOverlay.classList.add('hidden');
+      openStudentDetail(pendingStatusEdit.id); // refresh detail view to show the updated pill
+    }).catch(function () {
+      statusConfirmBtn.disabled = false;
+      statusConfirmBtn.textContent = 'Confirm';
+      alert('Could not reach the server.');
+    });
+  });
+
+  // ---- Init ----
+  checkConfigured();
+  updateQueueNote();
+  const existingAdmin = getAdmin();
+  if (existingAdmin) { showLoggedInUI(existingAdmin); } else { showLoggedOutUI(); }
+</script>
+</body>
+</html>
